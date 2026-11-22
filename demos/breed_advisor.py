@@ -1,14 +1,23 @@
+# Les démos sont dans demos/ : on se place à la racine du projet pour
+# importer helpers/ai/steps et ouvrir steps/*.yaml, output/...
+import os, sys
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, ROOT)
+os.chdir(ROOT)
+
 import gradio as gr
 import yaml
 from helpers import * 
 
 import requests
 
+# Interface du step 3 : affiche le questionnaire et appelle les 2 endpoints.
+
 def breed_advisor(*answers):
-    return requests.get(f"http://server:8000/which_dog_breed_should_i_choose?text={answers}").text
+    return requests.get(f"{SERVER_URL}/which_dog_breed_should_i_choose", params={"text": join('|', map(str, answers))}).text
 
 def breed_score(*answers):
-    return requests.get(f"http://server:8000/breed_score?text={join('|',map(str, answers))}").text
+    return requests.get(f"{SERVER_URL}/breed_score", params={"text": join('|', map(str, answers))}).text
 
 # Load questions from the YAML file
 with open('steps/step3_questions.yaml', 'r') as file:
@@ -35,4 +44,5 @@ def setup_gradio_interface():
 
 app = setup_gradio_interface()
 
-app.launch(server_name="0.0.0.0", share=True)
+# share=True créerait un lien public via les serveurs de Gradio : désactivé par défaut
+app.launch(server_name="0.0.0.0", server_port=7860)

@@ -10,7 +10,18 @@
     -   Clique sur "Create new secret key".
     -   Copie la clé affichée (elle commence par sk-...).
 
-3.  **Définir la clé API comme variable d'environnement** :
+3.  **Méthode recommandée pour le workshop : le fichier `.env`** :
+
+    ``` bash
+    cp .env.example .env
+    # puis éditer .env : OPENAI_API_KEY=sk-...
+    ```
+
+    `docker compose` lit automatiquement ce fichier. `.env` est ignoré par git :
+    **ne jamais écrire une clé dans le code ni la committer** (les clés publiées sur GitHub
+    sont détectées et révoquées automatiquement par OpenAI).
+
+    **Alternative : variable d'environnement du terminal** (utile hors Docker) :
 
     **Sur Windows (PowerShell)** :
 

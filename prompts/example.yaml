@@ -1,0 +1,17 @@
+# Exemple de prompt stocké HORS du code (step 2).
+# Copie ce fichier pour créer prompts/test.yaml et prompts/variables.yaml.
+#
+# - settings : paramètres envoyés tels quels à l'API OpenAI
+# - messages : la conversation ; {variable} est remplacé à l'appel :
+#       ai.prompt_openai("example", text="I love my dog")
+
+settings:
+  model: gpt-4.1-mini
+  temperature: 0        # 0 = déterministe (classification) ; 0.7+ = créatif
+  max_tokens: 5
+
+messages:
+  - role: system
+    content: "Answer with one word only: positive, negative or neutral."
+  - role: user
+    content: "Sentiment of this text: {text}"

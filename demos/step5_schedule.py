@@ -1,7 +1,20 @@
+# STEP 5 (bonus) — Planning de promenades avec "function calling"
+# But : laisser le LLM décider d'appeler une fonction Python (ici la météo) puis
+#       utiliser le résultat. C'est la brique de base des AGENTS IA.
+# À FAIRE : écrire le prompt (champ content) pour obtenir un planning heure par heure.
+
+# Les démos sont dans demos/ : on se place à la racine du projet pour
+# importer helpers/ai/steps et ouvrir steps/*.yaml, output/...
+import os, sys
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, ROOT)
+os.chdir(ROOT)
+
 from openai import OpenAI
 import json
 import os
 import steps.step0_setup
+import ai
 
 client = OpenAI(
     api_key=os.environ.get("OPENAI_API_KEY")
@@ -61,7 +74,7 @@ def run_conversation(location):
         }
     ]
     response = client.chat.completions.create(
-        model="gpt-3.5-turbo",
+        model=ai.OPENAI_MODEL,
         messages=messages,
         tools=tools,
         tool_choice="auto",  # auto is default, but we'll be explicit
@@ -95,7 +108,7 @@ def run_conversation(location):
                 }
             )  # extend conversation with function response
         second_response = client.chat.completions.create(
-            model="gpt-4",
+            model=ai.OPENAI_MODEL,
             messages=messages,
         )  # get a new response from the model where it can see the function response
         return second_response.choices[0].message.content

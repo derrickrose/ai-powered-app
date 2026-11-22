@@ -1,123 +1,156 @@
+# Démarrage :      docker compose up -d server ollama ollama-pull open-webui
+# Lancer tests :   docker compose run --rm test
+# Une app démo :   docker compose run --rm --service-ports breed-advisor
+#
+# Les clés API sont lues depuis .env (voir .env.example).
+
+x-app: &app
+  build: .
+  volumes:
+    - .:/app
+  env_file:
+    - path: .env
+      required: false
+  environment:
+    OLLAMA_HOST: http://ollama:11434
+    SERVER_URL: http://server:8000
+
 services:
+  # Backend FastAPI : toutes les routes des steps/ (doc interactive sur http://localhost:8000)
   server:
-    build: .
+    <<: *app
     command: python server.py
     ports:
       - "8000:8000"
-    volumes:
-      - .:/app
     healthcheck:
-      test: ["CMD-SHELL", "python -c 'import requests; response = requests.get(\"http://localhost:8000\"); assert response.status_code == 200'"]
-      interval: 1s
-      timeout: 0s
-      retries: 5
-      start_period: 0s
+      test: ["CMD-SHELL", "python -c 'import requests; requests.get(\"http://localhost:8000\", timeout=2).raise_for_status()'"]
+      interval: 3s
+      timeout: 5s
+      retries: 60
+      start_period: 10s
 
+  # Runner de tests : exécute les steps dans l'ordre, s'arrête au premier échec
   test:
-    build: .
+    <<: *app
     command: python tests.py
+    profiles: ["test"]
     depends_on:
       server:
         condition: service_healthy
-      ollama: 
-        condition: service_started
-    volumes:
-      - .:/app
+      ollama-pull:
+        condition: service_completed_successfully
 
+  # Serveur de modèles LLM locaux
   ollama:
     image: ollama/ollama:latest
-    ports:
-      - 11434:11434
-    volumes:
-      - .:/code
-      - ./ollama/ollama:/root/.ollama
     container_name: ollama
-    pull_policy: always
-    tty: true
-    restart: always
-
-  llama-webui:
-    image: ghcr.io/ollama-webui/ollama-webui:main
-    container_name: ollama-webui
+    ports:
+      - "11434:11434"
     volumes:
-      - ./ollama/ollama-webui:/app/backend/data
+      - ./ollama/ollama:/root/.ollama
+    restart: unless-stopped
+
+  # Télécharge une fois les modèles locaux définis dans .env, puis s'arrête
+  ollama-pull:
+    image: ollama/ollama:latest
+    depends_on:
+      - ollama
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        until ollama list >/dev/null 2>&1; do sleep 1; done
+        ollama pull "$${OLLAMA_SMALL_MODEL:-llama3.2:1b}"
+        ollama pull "$${OLLAMA_MEDIUM_MODEL:-llama3.2:3b}"
+    restart: "no"
+
+  # Interface type ChatGPT pour tester les modèles locaux à la main (http://localhost:3000)
+  # (remplace l'ancienne image ollama-webui, renommée Open WebUI)
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: open-webui
     depends_on:
       - ollama
     ports:
-      - 3000:8080
+      - "3000:8080"
+    volumes:
+      - ./ollama/open-webui:/app/backend/data
     environment:
-      - '/ollama/api=http://ollama:11434/api'
-    extra_hosts:
-      - host.docker.internal:host-gateway
+      OLLAMA_BASE_URL: http://ollama:11434
     restart: unless-stopped
 
-
-
-
-
-
-
-
-  gradio-hello-world.py:
-    build: .
-    command: python gradio-hello-world.py
+  # ---------- Apps de démo (lancer une à la fois, profil "apps") ----------
+  gradio-hello-world:
+    <<: *app
+    command: python demos/gradio-hello-world.py
+    profiles: ["apps"]
     ports:
-      - "7680:7680"
-      - "7681:7681"
-    volumes:
-      - .:/app
+      - "7860:7860"
 
-  streamlit-hello-world.py:
-    build: .
-    command: streamlit run streamlit-hello-world.py --server.address 0.0.0.0
+  streamlit-hello-world:
+    <<: *app
+    command: streamlit run demos/streamlit-hello-world.py --server.address 0.0.0.0
+    profiles: ["apps"]
     ports:
       - "8501:8501"
-    volumes:
-      - .:/app
 
-  breed_advisor.py:
-    build: .
-    command: python breed_advisor.py
+  breed-advisor:            # step 3
+    <<: *app
+    command: python demos/breed_advisor.py
+    profiles: ["apps"]
     ports:
-      - "7680:7680"
-      - "7681:7681"
-    volumes:
-      - .:/app
-
-  breed_recognition.py:
-    build: .
-    command: streamlit run breed_recognition.py --server.address 0.0.0.0
-    ports:
-      - "8501:8501"
-    volumes:
-      - .:/app
+      - "7860:7860"
     depends_on:
       server:
         condition: service_healthy
 
-  comments-human-in-the-loop.py:
-    build: .
-    command: streamlit run comments-human-in-the-loop.py --server.address 0.0.0.0
+  schedule:                 # step 5
+    <<: *app
+    command: streamlit run demos/step5_schedule.py --server.address 0.0.0.0
+    profiles: ["apps"]
     ports:
       - "8501:8501"
-    volumes:
-      - .:/app
 
-  step5_schedule.py:
-    build: .
-    command: streamlit run step5_schedule.py --server.address 0.0.0.0
+  breed-recognition:        # step 6
+    <<: *app
+    command: streamlit run demos/breed_recognition.py --server.address 0.0.0.0
+    profiles: ["apps"]
     ports:
       - "8501:8501"
-    volumes:
-      - .:/app
+    depends_on:
+      server:
+        condition: service_healthy
 
-  step8_generation.py:
-    build: .
-    command: streamlit run step8_generation.py --server.address 0.0.0.0
+  schedule-bis:             # step 5 bis (Claude)
+    <<: *app
+    command: streamlit run demos/step5_schedule_bis.py --server.address 0.0.0.0
+    profiles: ["apps"]
     ports:
       - "8501:8501"
-    volumes:
-      - .:/app
 
-volumes:
-  ollama:
+  generation:               # step 8
+    <<: *app
+    command: streamlit run demos/step8_generation.py --server.address 0.0.0.0
+    profiles: ["apps"]
+    ports:
+      - "8501:8501"
+    depends_on:
+      - ollama
+
+  generation-bis:           # step 8 bis (Claude)
+    <<: *app
+    command: streamlit run demos/step8_generation_bis.py --server.address 0.0.0.0
+    profiles: ["apps"]
+    ports:
+      - "8501:8501"
+
+  comments-review:          # step 9 / 10 (human in the loop)
+    <<: *app
+    command: streamlit run demos/comments-human-in-the-loop.py --server.address 0.0.0.0
+    profiles: ["apps"]
+    ports:
+      - "8501:8501"

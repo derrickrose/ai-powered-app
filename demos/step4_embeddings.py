@@ -1,11 +1,23 @@
-# https://semantle.com/junior
+# STEP 4 — Embeddings (démo, pas de test automatique)
+# But : comprendre comment l'IA représente le SENS d'un mot/d'une phrase par un vecteur,
+#       et que des sens proches = des vecteurs proches. C'est la base de la recherche
+#       sémantique et du RAG.
+# Lancer : docker compose run --rm server python demos/step4_embeddings.py
+# Les graphiques sont sauvegardés dans output/.
+# Jeu pour s'entraîner l'intuition : https://semantle.com/junior
 
-
-# pip install gensim umap-learn
-# pip install --no-cache-dir spacy && python -m spacy download en_core_web_md
+# Les démos sont dans demos/ : on se place à la racine du projet pour
+# importer helpers/ai/steps et ouvrir steps/*.yaml, output/...
+import os, sys
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, ROOT)
+os.chdir(ROOT)
 
 from gensim.models import Word2Vec
 import umap
+import os
+import matplotlib
+matplotlib.use("Agg")  # pas d'écran dans Docker : on sauvegarde en PNG
 import matplotlib.pyplot as plt
 from gensim.utils import simple_preprocess
 import steps.step0_setup
@@ -43,6 +55,18 @@ def get_embeddings(key, vector_size, distances):
 
     show_UMAP(vectors, words)
 
+_plot_count = 0
+
+def save_plot(name):
+    global _plot_count
+    _plot_count += 1
+    os.makedirs('output', exist_ok=True)
+    path = f'output/{_plot_count:02d}_{name}.png'
+    plt.savefig(path)
+    plt.close()
+    print(f'Graphique sauvegardé : {path}')
+
+
 def show_UMAP(vectors, words):
     # Reduce dimensions to 2D using UMAP
     umap_model = umap.UMAP(n_neighbors=5, min_dist=0.3, n_components=2)
@@ -54,7 +78,7 @@ def show_UMAP(vectors, words):
     for i, word in enumerate(words):
         plt.annotate(word, xy=(umap_result[i, 0], umap_result[i, 1]))
     plt.title('Word Embeddings visualized with UMAP')
-    plt.show()
+    save_plot('umap')
 
 
 
@@ -68,7 +92,7 @@ def draw_simple_graph(points, labels):
     for i, label in enumerate(labels):
         plt.annotate(label, xy=(x[i], y[i]))
     plt.title('Simple Graph')
-    plt.show()
+    save_plot('simple_graph')
 
 draw_simple_graph(
     [[1,0], [0,1], [-1,-1], [.1,.9], [.9,0.1]], 
@@ -107,14 +131,14 @@ constitution dog
 
 import spacy
 
-def get_embeddings(prompt, samples):
+def sentence_similarity(prompt, samples):
     nlp = spacy.load("en_core_web_md")
     prompt_doc = nlp(prompt)
     sample_docs = [nlp(sample) for sample in samples.split('\n') if sample.strip() != '']
     for doc in sample_docs:
         print(doc, '\n', prompt, prompt_doc.similarity(doc), doc.vector, '\n')
 
-get_embeddings(
+sentence_similarity(
     'The recent amendment to the constitution was challenged in the high court due to concerns about its legality.',
     """The recent amendment to the constitution was challenged in the high court due to concerns about its legality.
     The recent decision to the constitution was challenged in the JUDGE due to concerns about its legality.

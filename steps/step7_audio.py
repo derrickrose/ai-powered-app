@@ -1,4 +1,10 @@
-from helpers import * 
+# STEP 7 — "Traducteur" d'aboiements
+# But : classification audio ZERO-SHOT : on ne ré-entraîne rien, on donne juste des
+#       labels en texte et le modèle CLAP choisit celui qui ressemble le plus au son.
+# Le travail = bien choisir les labels (comme un prompt, mais pour l'audio).
+# Pas d'endpoint : tout se passe dans test_emotion().
+
+from helpers import *
 from datasets import load_dataset
 from transformers import pipeline
 from ramda import *

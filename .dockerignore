@@ -1,2 +1,5 @@
 ollama
 .venv
+.env
+.git
+output

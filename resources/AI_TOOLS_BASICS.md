@@ -151,6 +151,10 @@ TinyLlama : "You have 5 apples" ❌ (gets lost in the steps)
 
 ## ⚠️ Limites des Petits Modèles
 
+> ℹ️ Les exemples ci-dessous viennent de **TinyLlama** (1,1 milliard de paramètres, 2023), le petit modèle
+> utilisé dans la première version du workshop. Les petits modèles actuels (`llama3.2:1b`, Qwen, Gemma)
+> font mieux, mais **les mêmes défauts existent** : à tester toi-même dans Open WebUI (http://localhost:3000).
+
 ### 1. Hallucinations
 
 **Définition** : Le modèle invente des informations fausses avec une grande confiance.
@@ -166,7 +170,7 @@ Toi:
     Who played ant man. Answer with just a name.
     Answer like: Danny DeVitto
 
-tinyllama va répondre:
+tinyllama (petit modèle local de 2023) va répondre:
     Danny DeVitto is the actor who has played Ant-Man in two movie 
     adaptations, "Ant-Man" (2015) and "Ant-Man and the Wasp" (2018), 
     directed by Edgar Wright.
@@ -187,7 +191,7 @@ ChatGPT va répondre:
 Toi:
     What is the capital of Australia?
 
-tinyllama va répondre:
+tinyllama (petit modèle local de 2023) va répondre:
     The capital of Australia is Sydney.
 
 ChatGPT va répondre:
@@ -278,19 +282,18 @@ if json_match:
     data = json.loads(json_match.group())
 ```
 
-3. **Utiliser Outlines** pour forcer le format :
+3. **Utiliser les structured outputs** pour forcer le format :
 ```python
 from pydantic import BaseModel
-import outlines
 
 class Facts(BaseModel):
     fact1: str
     fact2: str
     fact3: str
 
-generator = outlines.generate.json(model, Facts)
-result = generator("Facts about France")
-# → Garanti d'être un JSON valide
+raw = ai.ollama("Facts about France", format=Facts.model_json_schema())
+result = Facts.model_validate_json(raw)
+# → JSON conforme au schéma, vérifié par Pydantic
 ```
 
 ---
@@ -304,7 +307,7 @@ Les petits modèles inventent des "faits" qui sonnent plausibles.
 Toi:
     What is the Heisenberg Uncertainty Principle?
 
-tinyllama va répondre:
+tinyllama (petit modèle local de 2023) va répondre:
     The Heisenberg Uncertainty Principle states that the position and 
     velocity of a particle cannot both be measured with absolute precision 
     at the same time. This is because measuring one property disturbs the 
@@ -520,7 +523,7 @@ response = ai.openai("Talk about dogs", presence_penalty=1.5)
 
 ### OpenAI
 
-API officielle pour GPT-3.5/GPT-4.
+API officielle pour les modèles GPT (modèle du workshop : `OPENAI_MODEL` dans `.env`).
 
 **Installation** :
 ```bash
@@ -529,12 +532,12 @@ pip install openai
 
 **Usage basique** :
 ```python
-import openai
+from openai import OpenAI
 
-openai.api_key = "sk-..."
+client = OpenAI()   # lit la clé dans la variable d'environnement OPENAI_API_KEY (.env)
 
-response = openai.ChatCompletion.create(
-    model="gpt-3.5-turbo",
+response = client.chat.completions.create(
+    model="gpt-4.1-mini",
     messages=[
         {"role": "system", "content": "You are a helpful assistant."},
         {"role": "user", "content": "Hello!"}
@@ -555,7 +558,7 @@ messages = [
     {"role": "user", "content": "What can I do with it?"}
 ]
 
-response = openai.ChatCompletion.create(model="gpt-3.5-turbo", messages=messages)
+response = client.chat.completions.create(model="gpt-4.1-mini", messages=messages)
 ```
 
 ---
@@ -669,77 +672,61 @@ async def create_user(user: User):
 
 ---
 
-### Pezzo
+### Gestion des prompts (anciennement Pezzo)
 
-Plateforme de gestion centralisée de prompts.
+> 🔄 Le workshop utilisait **Pezzo**, un service en ligne aujourd'hui inactif. Le step 2 utilise
+> maintenant des fichiers `prompts/*.yaml` versionnés avec git. En production, l'outil de
+> référence est **Langfuse** (open source) ; alternatives : PromptLayer, Braintrust.
 
-**Installation** :
-```bash
-pip install pezzo
-```
-
-**Usage** :
+**Usage dans le workshop** :
 ```python
-import pezzo
-
-pezzo.api_key = "pezzo_xxx"
-pezzo.project_id = "proj_xxx"
-
-# Utilise un prompt versionné depuis Pezzo
-response = pezzo.openai(
-    "PromptName", 
-    variables={"user": "John"}
-)
+# prompts/greeting.yaml contient settings (model, temperature...) + messages avec {name}
+response = ai.prompt_openai("greeting", name="John")
 ```
 
-**Avantages** :
-- ✅ Modifier prompts sans redéployer le code
-- ✅ Versioning (rollback facile)
-- ✅ A/B testing
-- ✅ Monitoring (combien d'appels, coûts, etc.)
-- ✅ Collaboration (toute l'équipe voit les prompts)
-
-**Workflow** :
-1. Créer prompt sur https://app.pezzo.ai/
-2. Tester différentes versions
-3. Publish la meilleure version
-4. Le code utilise automatiquement la dernière version
+**Avantages de sortir les prompts du code** :
+- ✅ Historique et rollback (git, ou versions dans Langfuse)
+- ✅ Relire/modifier un prompt sans lire le code
+- ✅ Paramètres du modèle au même endroit que le texte
+- ✅ Avec Langfuse : monitoring (appels, coûts, latence), A/B testing, évaluations
 
 ---
 
-### Outlines
+### Structured outputs (anciennement Outlines)
 
-Génération structurée garantie avec Pydantic.
+Forcer un LLM à répondre avec un JSON qui respecte un schéma.
 
-**Installation** :
-```bash
-pip install outlines
-```
+> 🔄 Le workshop utilisait la librairie **Outlines**, dont l'API a complètement changé.
+> Aujourd'hui, Ollama et OpenAI le font **nativement** ("structured outputs").
 
-**Usage** :
+**Usage (Ollama, step 8)** :
 ```python
 from pydantic import BaseModel
-import outlines
 
 class User(BaseModel):
     name: str
     age: int
     email: str
 
-# Génère TOUJOURS un JSON valide
-generator = outlines.generate.json(
-    model="gpt-3.5-turbo",
-    schema=User
-)
+raw = ai.ollama("Generate a user profile", format=User.model_json_schema())
+user = User.model_validate_json(raw)   # Pydantic vérifie le résultat
+```
 
-result = generator("Generate a user profile")
-print(result)
-# → Garanti d'être {'name': '...', 'age': ..., 'email': '...'}
+**Usage (OpenAI)** :
+```python
+from openai import OpenAI
+
+completion = OpenAI().chat.completions.parse(
+    model="gpt-4.1-mini",
+    messages=[{"role": "user", "content": "Generate a user profile"}],
+    response_format=User,
+)
+user = completion.choices[0].message.parsed
 ```
 
 **Pourquoi c'est utile ?**
 
-Sans Outlines :
+Sans structured outputs :
 ```python
 response = ai.openai("Generate a user in JSON")
 # → Peut retourner :
@@ -748,11 +735,7 @@ response = ai.openai("Generate a user in JSON")
 #    - Du JSON incomplet : {"name": "John"}  (manque age)
 ```
 
-Avec Outlines :
-```python
-result = generator("Generate a user")
-# → TOUJOURS un JSON valide avec tous les champs requis
-```
+Avec : la forme est garantie par le modèle, et **le code valide** (l'IA produit, le code vérifie).
 
 ---
 
@@ -1071,8 +1054,8 @@ messages = [
     }
 ]
 
-response = openai.ChatCompletion.create(
-    model="gpt-3.5-turbo",
+response = client.chat.completions.create(
+    model="gpt-4.1-mini",
     messages=messages
 )
 ```
@@ -1458,7 +1441,8 @@ Testez ces cas pour améliorer la robustesse.
 ### Guides et Tutoriels
 - [Prompt Engineering Guide](https://www.promptingguide.ai/) - Techniques avancées de prompting
 - [LangChain Docs](https://python.langchain.com/) - Framework pour applications LLM
-- [Outlines Docs](https://outlines-dev.github.io/outlines/) - Génération structurée
+- [Ollama structured outputs](https://ollama.com/blog/structured-outputs) - Génération structurée
+- [Langfuse](https://langfuse.com/docs) - Gestion des prompts
 
 ### Datasets
 - [HuggingFace Datasets](https://huggingface.co/datasets) - Des milliers de datasets
@@ -1497,8 +1481,8 @@ Après ce cours, vous comprenez :
 - OpenAI API
 - HuggingFace Transformers
 - FastAPI
-- Pezzo
-- Outlines
+- Prompts hors du code (YAML / Langfuse)
+- Structured outputs + Pydantic
 - Embeddings
 
 **Concepts Avancés** ✅

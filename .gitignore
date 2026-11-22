@@ -1,9 +1,7 @@
-__pycache__
-__pycache__
-steps/__pycache__
-ollama/
 __pycache__/
-__pycache__
-ollama
-test_cache.json
 .venv
+.env
+test_cache.json
+ollama/
+.gradio/
+output/

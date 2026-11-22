@@ -1,19 +1,35 @@
-requests
-fastapi
-uvicorn[standard]
-watchgod
-gradio_client
-gradio
-ollama
-pezzo
-ramda
-scipy
-openai
-streamlit
-datasets
-transformers
-librosa
-soundfile
-torch
-outlines
-pytest
+# Versions bornées aux versions majeures dont l'API correspond au code du workshop.
+
+# --- Backend web ---
+fastapi>=0.110
+uvicorn[standard]>=0.29
+requests>=2.31
+python-multipart>=0.0.9   # requis par FastAPI pour l'upload de fichier (step 6)
+pyyaml>=6.0
+pydantic>=2.6
+ramda>=0.7          # petites fonctions utilitaires (find, join, pluck...) — pas de l'IA
+
+# --- LLM ---
+openai>=1.40,<3     # API cloud (GPT). Ollama (local) est appelé en HTTP via requests
+anthropic>=2.12,<3  # API cloud Claude (steps *_bis)
+
+# --- Interfaces de démo ---
+gradio>=4.30,<6
+streamlit>=1.35
+
+# --- Machine learning classique (Hugging Face) ---
+torch               # installé en version CPU par le Dockerfile
+transformers>=4.40,<5
+huggingface-hub<1.0  # compatible avec datasets 3.x et transformers 4.x
+datasets>=2.19,<4   # datasets 4.x a changé le décodage audio (step 7)
+pillow>=10.0
+librosa>=0.10
+soundfile>=0.12
+scipy>=1.11
+
+# --- Embeddings (step 4) ---
+gensim>=4.3
+umap-learn>=0.5
+matplotlib>=3.8
+spacy>=3.7
+nltk>=3.8

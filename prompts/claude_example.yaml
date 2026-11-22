@@ -1,0 +1,21 @@
+# Exemple de prompt pour CLAUDE (step 2 bis).
+# Copie ce fichier pour créer prompts/claude_test.yaml et prompts/claude_variables.yaml.
+#
+# Différences avec prompts/example.yaml (OpenAI) :
+# - pas de temperature / top_p / presence_penalty / frequency_penalty (refusés par les modèles Claude actuels)
+# - effort : combien le modèle réfléchit (low | medium | high | xhigh | max)
+# - max_tokens obligatoire, et il inclut la réflexion du modèle : ne pas le mettre trop bas
+# - les messages "system" sont envoyés dans le paramètre system de l'API (fait par ai_claude.prompt_claude)
+#
+#       ai_claude.prompt_claude("claude_example", text="I love my dog")
+
+settings:
+  model: claude-opus-5-5
+  effort: low
+  max_tokens: 1024
+
+messages:
+  - role: system
+    content: "Answer with one word only: positive, negative or neutral."
+  - role: user
+    content: "Sentiment of this text: {text}"

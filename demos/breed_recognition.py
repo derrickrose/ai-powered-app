@@ -1,9 +1,10 @@
 import streamlit as st
 from PIL import Image
+import os
 import requests
 
-# Define the endpoint for breed recognition
-RECOGNITION_URL = "http://server:8000/recognize_dog_breed"
+# Interface du step 6 : envoie la photo à l'endpoint /recognize_dog_breed
+RECOGNITION_URL = os.environ.get("SERVER_URL", "http://server:8000") + "/recognize_dog_breed"
 
 st.title('Dog Breed Recognition')
 
@@ -13,7 +14,7 @@ uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "jpeg", "png
 if uploaded_file is not None:
     # Display the image
     image = Image.open(uploaded_file)
-    st.image(image, caption='Uploaded Image', use_column_width=True)
+    st.image(image, caption='Uploaded Image')
     st.write("Classifying...")
 
     # Convert the file to an image that can be sent via HTTP

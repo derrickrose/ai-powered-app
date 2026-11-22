@@ -1,6 +1,12 @@
+# STEP 1 — Prompting LLM
+# But : appeler un LLM depuis un endpoint et écrire des prompts qui donnent
+#       une réponse exploitable (résumé, sentiment, code, points clés, questions).
+# Outil : ai.openai(...)  (ou ai.ollama(...) pour comparer avec un modèle local)
+# Remplacez chaque 'Write your code here'.
+
 from fastapi import APIRouter
-from helpers import * 
-import ai 
+from helpers import *
+import ai
 router = APIRouter()
 
 def test_summarize():
@@ -17,9 +23,9 @@ async def summarize(text: str):
 
 
 def test_sentiment():
-    return check('/sentiment', 'Kinda ok.', 'neutral') and \
-           check('/sentiment', 'I\'m so glad. That awesome', 'positive') and \
-           check('/sentiment', "Feeling terrible. It's awful", 'negative')
+    return all_ok(check('/sentiment', 'Kinda ok.', 'neutral'),
+                  check('/sentiment', 'I\'m so glad. That awesome', 'positive'),
+                  check('/sentiment', "Feeling terrible. It's awful", 'negative'))
 
 @router.get("/sentiment")
 async def sentiment(text: str):

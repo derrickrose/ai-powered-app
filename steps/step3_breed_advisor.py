@@ -1,9 +1,15 @@
-from fastapi import APIRouter
-from helpers import * 
-import ai 
-router = APIRouter()
+# STEP 3 — Breed Advisor
+# But : comparer DEUX façons de recommander une race à partir d'un questionnaire.
+#   3.1 /which_dog_breed_should_i_choose -> avec un LLM (flexible, mais variable et payant)
+#   3.2 /breed_score                     -> avec du CODE simple (compter les réponses qui
+#                                           correspondent dans step3_breeds.yaml) :
+#                                           exact, gratuit, testable. Ici, pas besoin d'IA !
+# Les réponses arrivent dans `text` sous la forme "réponse1|réponse2|...".
 
-# https://chat.openai.com/share/116eac42-1663-48b4-b470-c5d59faab080
+from fastapi import APIRouter
+from helpers import *
+import ai
+router = APIRouter()
 
 import yaml
 with open('steps/step3_questions.yaml', 'r') as file:
@@ -33,14 +39,15 @@ def test_breed_score_consult():
     test_input = 'Very active|Prefer staying indoors|Apartment|Small yard|Yes, cats|Somewhat comfortable|4 to 8 hours|Occasionally|Not sure|Yes, specific energy level|No, open to suggestions|Exercise partner|Protection|Somewhat|No specific budget, but have financial limits|Unsure|Can make necessary adjustments|Yes, good with other animals'
     expected_output = {'whippet': 1, 'greyhound': 3, 'labrador_retriever': 18, 'french_bulldog': 12, 'german_shepherd': 16, 'beagle': 11, 'golden_retriever': 17, 'poodle': 7, 'boxer': 10}
     response, ok_ = GET("/breed_score", test_input)
-    if ok_:
+    if not ok_:
+        return fail("Breed score consult test failed.", "Endpoint /breed_score did not return a successful response.")
+    try:
         result = json.loads(response)
-        if result == expected_output:
-            ok("Breed score consult test passed.")
-        else:
-            fail("Breed score consult test failed.", f"Expected {expected_output}, but got {result}")
-    else:
-        fail("Breed score consult test failed.", "Endpoint /breed_score did not return a successful response.")
+    except ValueError:
+        return fail("Breed score consult test failed.", f"Response is not JSON: {response}")
+    if result == expected_output:
+        return ok("Breed score consult test passed.")
+    return fail("Breed score consult test failed.", f"Expected {expected_output}, but got {result}")
 
 
 @router.get("/breed_score")

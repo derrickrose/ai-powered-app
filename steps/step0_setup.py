@@ -1,45 +1,43 @@
-from sys import path
-
-path.append("..")
+# STEP 0 — Configuration
+# But : vérifier que les clés et les modèles locaux sont prêts. Rien à coder.
+# Les valeurs viennent de .env (voir .env.example), jamais en dur dans le code.
 
 from helpers import *
 
 import os
-os.environ.setdefault("PEZZO_API_KEY", "UNSET"),
-os.environ.setdefault("PEZZO_PROJECT_ID", "UNSET"),
 os.environ.setdefault("OPENAI_API_KEY", "UNSET")
 os.environ.setdefault("HUGGING_FACE_API_KEY", "UNSET")
+os.environ.setdefault("ANTHROPIC_API_KEY", "UNSET")
 
-def test_hugging_face_key():
-    api_key = os.environ.get("HUGGING_FACE_API_KEY")
-
-    if api_key == "UNSET":
-        return fail("HUGGING_FACE_API_KEY environment variable is not set properly. Visit: https://huggingface.co/settings/tokens")
-    else:
-        return ok("HUGGING_FACE_API_KEY environment variable is set properly")
-
-def test_pezzo_keys():
-    api_key = os.environ.get("PEZZO_API_KEY")
-    project_id = os.environ.get("PEZZO_PROJECT_ID")
-
-    if api_key == "UNSET" or project_id == "UNSET":
-        return fail("PEZZO environment variables are not set properly. Visit: https://app.pezzo.ai/")
-    else:
-        return ok("PEZZO environment variables are set properly")
 
 def test_openai_keys():
-    openai_key = os.environ.get("OPENAI_API_KEY")
-    if openai_key == "UNSET":
-        return fail("OPENAI environment variable is not set properly.")
-    else:
-        return ok("OPENAI environment variable is set properly.")
+    if os.environ.get("OPENAI_API_KEY") in ("UNSET", ""):
+        return fail("OPENAI_API_KEY n'est pas définie. Copie .env.example en .env et remplis-la.")
+    return ok(f"OPENAI_API_KEY est définie (modèle : {ai.OPENAI_MODEL})")
+
+
+def test_anthropic_key():
+    # Optionnel : seulement pour les steps *_bis (Claude). Sans clé, elles sont sautées.
+    if os.environ.get("ANTHROPIC_API_KEY") in ("UNSET", ""):
+        return ok(yellow("ANTHROPIC_API_KEY non définie (optionnel : steps *_bis avec Claude)."))
+    import ai_claude
+    return ok(f"ANTHROPIC_API_KEY est définie (modèle : {ai_claude.ANTHROPIC_MODEL})")
+
+
+def test_hugging_face_key():
+    # Optionnel : les modèles publics utilisés dans le workshop fonctionnent sans token.
+    if os.environ.get("HUGGING_FACE_API_KEY") in ("UNSET", ""):
+        return ok(yellow("HUGGING_FACE_API_KEY non définie (optionnel). https://huggingface.co/settings/tokens"))
+    return ok("HUGGING_FACE_API_KEY est définie")
+
 
 def test_ollama_models():
-    for model in ['mistral', 'tinyllama']:
+    for model in [ai.OLLAMA_SMALL_MODEL, ai.OLLAMA_MEDIUM_MODEL]:
         try:
-            response = ai.ollama(prompt='Say "test"', model=model)
-            if "test" not in response:
-                return fail(f"Ollama model {model} is not working properly.")
+            response = ai.ollama(prompt='Say "test"', model=model, temperature=0)
+            if "test" not in response.lower():
+                return fail(f"Le modèle Ollama {model} ne répond pas correctement : {response}")
         except Exception as e:
-            return fail(f"Ollama model {model} encountered an error: {e}")
-    return ok("Ollama models tinyllama, mistral are working properly.")
+            return fail(f"Le modèle Ollama {model} est en erreur : {e}",
+                        "\nLance : docker compose up ollama-pull")
+    return ok(f"Modèles Ollama {ai.OLLAMA_SMALL_MODEL}, {ai.OLLAMA_MEDIUM_MODEL} OK.")

@@ -2,17 +2,15 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-#RUN pip install --no-cache-dir requests fastapi uvicorn[standard] watchgod gradio_client gradio ollama pezzo ramda
-#RUN pip install --no-cache-dir scipy==1.10.1
-#RUN pip uninstall --no-cache-dir openai -y
-#RUN pip install --no-cache-dir openai
-#RUN pip install --no-cache-dir streamlit gradio
-#RUN pip install --no-cache-dir datasets transformers
-#RUN pip install --no-cache-dir librosa soundfile
-#RUN pip install --no-cache-dir torch
-#RUN pip install --no-cache-dir outlines
-RUN pip install --no-cache-dir -r requirements.txt
+# torch en version CPU : image ~2 Go plus légère que la version CUDA par défaut
+RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
+
+# requirements.txt doit être copié AVANT le pip install (sinon le build échoue)
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt \
+ && python -m spacy download en_core_web_md \
+ && python -m nltk.downloader -d /usr/local/share/nltk_data stopwords
 
 COPY . /app
 
-CMD ["uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["python", "server.py"]
